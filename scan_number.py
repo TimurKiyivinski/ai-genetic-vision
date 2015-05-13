@@ -18,13 +18,18 @@ class PNGMap:
     def mutate(self):
         pass
     def like(self, comparePNG):
-        if self.size == comparePNG.size:
+        if self.size != comparePNG.size:
             return 0
-        thisPNGLine = this.line()
+        thisPNGLine = self.line()
         comparePNGLine = comparePNG.line()
+        encounters = 0
+        similarities = 0
         for i in range(0, len(thisPNGLine)):
-            print(i)
-        return 1
+            for ii in range(0, len(thisPNGLine) - i):
+                if thisPNGLine[ii] == comparePNGLine[ii]:
+                    similarities += 1
+                encounters += 1
+        return similarities / encounters
 
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
@@ -60,6 +65,7 @@ def main(args):
         print('Reading bitmap %s' % bitmapFile)
     resourcePNG = getPNGResource(resourceDir)
     bitmapArr = getPNGArray(bitmapFile)
+    userMap = PNGMap('User', bitmapArr)
     if setVerbose:
         print('User bitmap:')
         printPNGArray(bitmapArr)
@@ -67,8 +73,10 @@ def main(args):
         for resourceBitmap in resourcePNG:
             print('Resource file (%s):' % resourceBitmap.name)
             printPNGArray(resourceBitmap.bitmap)
-    print('meow')
-    resourcePNG[0].like(resourcePNG[1])
+    for i in range(0, len(resourcePNG)):
+        print(resourcePNG[i].name)
+        similarities = userMap.like(resourcePNG[i])
+        print(similarities)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
