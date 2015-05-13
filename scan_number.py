@@ -2,21 +2,71 @@
 import os
 import png
 import glob
+import random
 import argparse
 
+MUTRATE = 1/9
+ADDRATE = 3
+
+class Coordinates:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def get(self):
+        return self.x, self.y
+
 class PNGMap:
-    def __init__(self, PNGName, PNGArray = []):
+    def __init__(self, PNGName, PNGArray = [], PNGWhite = 1):
         self.name = PNGName
         self.bitmap = PNGArray
+        self.white = PNGWhite
         self.dim = len(PNGArray)
         self.size = len(PNGArray) * len(PNGArray[0])
+    def inverse(self, bit):
+        if bit == self.white:
+            return 0
+        else:
+            return self.white
     def line(self):
         bitmapLine = []
         for row in self.bitmap:
             bitmapLine += row
         return bitmapLine
     def mutate(self):
-        pass
+        mutationType = random.randint(0, 2)
+        mutationType = 0
+        if mutationType == 0:
+            charCo = []
+            for i in range(0, self.dim):
+                for ii in range(0, self.dim):
+                    if self.bitmap[i][ii] != self.white:
+                        charCo.append(Coordinates(i, ii))
+            noAdds = random.randint(1, ADDRATE)
+            for i in range(0, noAdds):
+                addAt = random.randint(0, len(charCo))
+                addFriend = charCo[addAt]
+                addX, addY = addFriend.get()
+                added = False
+                while not added:
+                    addDir = random.randint(0, 3)
+                    if addDir in range(0, 2):
+                        if addX in range(1, self.dim):
+                            if addDir == 0:
+                                self.bitmap[addX - 1][addY] = self.inverse(self.bitmap[addX - 1][addY])
+                            elif addDir == 1:
+                                self.bitmap[addX + 1][addY] = self.inverse(self.bitmap[addX + 1][addY])
+                            added = True
+                        else:
+                            continue
+                    elif addDir in range(2, 4):
+                        if addY in range(1, self.dim):
+                            if addDir == 2:
+                                self.bitmap[addX][addY - 1] = self.inverse(self.bitmap[addX][addY - 1])
+                            elif addDir == 3:
+                                self.bitmap[addX][addY + 1] = self.inverse(self.bitmap[addX][addY + 1])
+                            added = True
+                        else:
+                            continue
     def like(self, comparePNG):
         if self.size != comparePNG.size:
             return 0
@@ -73,10 +123,31 @@ def main(args):
         for resourceBitmap in resourcePNG:
             print('Resource file (%s):' % resourceBitmap.name)
             printPNGArray(resourceBitmap.bitmap)
+    print('Before mutation')
     for i in range(0, len(resourcePNG)):
         print(resourcePNG[i].name)
         similarities = userMap.like(resourcePNG[i])
         print(similarities)
+    print('After mutation')
+    for i in range(0, len(resourcePNG)):
+        print(resourcePNG[i].name)
+        resourcePNG[i].mutate()
+        similarities = userMap.like(resourcePNG[i])
+        print(similarities)
+    print('User bitmap:')
+    printPNGArray(bitmapArr)
+    print('User bitmap mutation 1:')
+    userMap.mutate()
+    printPNGArray(userMap.bitmap)
+    print('User bitmap mutation 2:')
+    userMap.mutate()
+    printPNGArray(userMap.bitmap)
+    print('User bitmap mutation 3:')
+    userMap.mutate()
+    printPNGArray(userMap.bitmap)
+    print('User bitmap mutation 4:')
+    userMap.mutate()
+    printPNGArray(userMap.bitmap)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
