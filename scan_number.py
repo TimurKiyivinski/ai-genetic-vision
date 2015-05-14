@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import png
 import glob
 import random
@@ -32,6 +33,16 @@ class PNGMap:
         for row in self.bitmap:
             bitmapLine += row
         return bitmapLine
+    def breed(self, partnerMap):
+        babyArray = []
+        splitLine = random.randint(1, self.dim - 1)
+        print(splitLine)
+        for i in range(0, splitLine):
+            babyArray.append(self.bitmap[i])
+        for i in range(splitLine + 1, self.dim):
+            babyArray.append(partnerMap.bitmap[i])
+        babyMap = PNGMap(self.name, babyArray)
+        return babyMap
     def mutate(self):
         mutationType = random.randint(0, 2)
         mutationType = 0
@@ -43,7 +54,7 @@ class PNGMap:
                         charCo.append(Coordinates(i, ii))
             noAdds = random.randint(1, ADDRATE)
             for i in range(0, noAdds):
-                addAt = random.randint(0, len(charCo))
+                addAt = random.randint(0, len(charCo) - 1)
                 addFriend = charCo[addAt]
                 addX, addY = addFriend.get()
                 added = False
@@ -104,7 +115,9 @@ def getPNGResource(resourceDir):
 
 def printPNGArray(bitmapArr):
     for row in bitmapArr:
-        print(row)
+        for bit in row:
+            sys.stdout.write(str(bit))
+        print('\n')
 
 def main(args):
     setVerbose = args.verbose
@@ -123,31 +136,34 @@ def main(args):
         for resourceBitmap in resourcePNG:
             print('Resource file (%s):' % resourceBitmap.name)
             printPNGArray(resourceBitmap.bitmap)
-    print('Before mutation')
-    for i in range(0, len(resourcePNG)):
-        print(resourcePNG[i].name)
-        similarities = userMap.like(resourcePNG[i])
-        print(similarities)
-    print('After mutation')
-    for i in range(0, len(resourcePNG)):
-        print(resourcePNG[i].name)
-        resourcePNG[i].mutate()
-        similarities = userMap.like(resourcePNG[i])
-        print(similarities)
-    print('User bitmap:')
-    printPNGArray(bitmapArr)
-    print('User bitmap mutation 1:')
-    userMap.mutate()
-    printPNGArray(userMap.bitmap)
-    print('User bitmap mutation 2:')
-    userMap.mutate()
-    printPNGArray(userMap.bitmap)
-    print('User bitmap mutation 3:')
-    userMap.mutate()
-    printPNGArray(userMap.bitmap)
-    print('User bitmap mutation 4:')
-    userMap.mutate()
-    printPNGArray(userMap.bitmap)
+    #print('Before mutation')
+    #for i in range(0, len(resourcePNG)):
+    #    print(resourcePNG[i].name)
+    #    similarities = userMap.like(resourcePNG[i])
+    #    print(similarities)
+    #print('After mutation')
+    #for i in range(0, len(resourcePNG)):
+    #    print(resourcePNG[i].name)
+    #    resourcePNG[i].mutate()
+    #    similarities = userMap.like(resourcePNG[i])
+    #    print(similarities)
+    #print('User bitmap:')
+    #printPNGArray(bitmapArr)
+    #print('User bitmap mutation 1:')
+    #userMap.mutate()
+    #printPNGArray(userMap.bitmap)
+    #print('User bitmap mutation 2:')
+    #userMap.mutate()
+    #printPNGArray(userMap.bitmap)
+    #print('User bitmap mutation 3:')
+    #userMap.mutate()
+    #printPNGArray(userMap.bitmap)
+    #print('User bitmap mutation 4:')
+    #userMap.mutate()
+    #printPNGArray(userMap.bitmap)
+    print('After breeding..')
+    babyMap = userMap.breed(resourcePNG[0])
+    printPNGArray(babyMap.bitmap)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
