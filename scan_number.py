@@ -3,6 +3,7 @@ import os
 import sys
 import png
 import glob
+import copy
 import random
 import argparse
 
@@ -28,6 +29,17 @@ class PNGMap:
             return 0
         else:
             return self.white
+    def surrounded(self, x, y):
+        sim = 0
+        if self.bitmap[x - 1][y] != self.white:
+            sim += 1
+        if self.bitmap[x + 1][y] != self.white:
+            sim += 1
+        if self.bitmap[x][y - 1] != self.white:
+            sim += 1
+        if self.bitmap[x][y + 1] != self.white:
+            sim += 1
+        return sim == 4
     def line(self):
         bitmapLine = []
         for row in self.bitmap:
@@ -63,18 +75,30 @@ class PNGMap:
                     if addDir in range(0, 2):
                         if addX in range(1, self.dim):
                             if addDir == 0:
-                                self.bitmap[addX - 1][addY] = self.inverse(self.bitmap[addX - 1][addY])
+                                if not self.surrounded(addX - 1, addY):
+                                    self.bitmap[addX - 1][addY] = self.inverse(self.bitmap[addX - 1][addY])
+                                else:
+                                    continue
                             elif addDir == 1:
-                                self.bitmap[addX + 1][addY] = self.inverse(self.bitmap[addX + 1][addY])
+                                if not self.surrounded(addX + 1, addY):
+                                    self.bitmap[addX + 1][addY] = self.inverse(self.bitmap[addX + 1][addY])
+                                else:
+                                    continue
                             added = True
                         else:
                             continue
                     elif addDir in range(2, 4):
                         if addY in range(1, self.dim):
                             if addDir == 2:
-                                self.bitmap[addX][addY - 1] = self.inverse(self.bitmap[addX][addY - 1])
+                                if not self.surrounded(addX, addY - 1):
+                                    self.bitmap[addX][addY - 1] = self.inverse(self.bitmap[addX][addY - 1])
+                                else:
+                                    continue
                             elif addDir == 3:
-                                self.bitmap[addX][addY + 1] = self.inverse(self.bitmap[addX][addY + 1])
+                                if not self.surrounded(addX, addY + 1):
+                                    self.bitmap[addX][addY + 1] = self.inverse(self.bitmap[addX][addY + 1])
+                                else:
+                                    continue
                             added = True
                         else:
                             continue
@@ -91,6 +115,23 @@ class PNGMap:
                     similarities += 1
                 encounters += 1
         return similarities / encounters
+
+def randParent(PNGMaps, totalFitness):
+    roulette = random.uniform(0, totalFitness)
+    fitness = 0
+    for listMap in PNGMaps:
+        fitness += listMap.like(comparemap)
+        if fitness > roulette:
+            return listMap
+
+def genParents(PNGMaps, compareMap):
+    parentsA = []
+    parentsB = []
+    totalFitness = sum(listMap.like(compareMap) for listMap in PNGMaps)
+    for listMap in PNGMaps:
+        parentsA.append(randParent(PNGMaps, totalFitness))
+        parentsB.append(randParent(PNGMaps, totalFitness))
+    return parentsA, parentsB
 
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
@@ -117,7 +158,7 @@ def printPNGArray(bitmapArr):
     for row in bitmapArr:
         for bit in row:
             sys.stdout.write(str(bit))
-        print('\n')
+        print('')
 
 def main(args):
     setVerbose = args.verbose
@@ -136,34 +177,13 @@ def main(args):
         for resourceBitmap in resourcePNG:
             print('Resource file (%s):' % resourceBitmap.name)
             printPNGArray(resourceBitmap.bitmap)
-    #print('Before mutation')
-    #for i in range(0, len(resourcePNG)):
-    #    print(resourcePNG[i].name)
-    #    similarities = userMap.like(resourcePNG[i])
-    #    print(similarities)
-    #print('After mutation')
-    #for i in range(0, len(resourcePNG)):
-    #    print(resourcePNG[i].name)
-    #    resourcePNG[i].mutate()
-    #    similarities = userMap.like(resourcePNG[i])
-    #    print(similarities)
-    #print('User bitmap:')
-    #printPNGArray(bitmapArr)
-    #print('User bitmap mutation 1:')
-    #userMap.mutate()
-    #printPNGArray(userMap.bitmap)
-    #print('User bitmap mutation 2:')
-    #userMap.mutate()
-    #printPNGArray(userMap.bitmap)
-    #print('User bitmap mutation 3:')
-    #userMap.mutate()
-    #printPNGArray(userMap.bitmap)
-    #print('User bitmap mutation 4:')
-    #userMap.mutate()
-    #printPNGArray(userMap.bitmap)
-    print('After breeding..')
-    babyMap = userMap.breed(resourcePNG[0])
-    printPNGArray(babyMap.bitmap)
+    userMutations = []
+    for i in range(0, 16):
+        mutationNext = copy.deepcopy(userMap)
+        mutationNext.mutate()
+        userMutations.append(mutationNext)
+    for resourceBitmap in resourcePNG:
+        parentsA, parentsB = genParents(userMutations, resourceBitmap)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
