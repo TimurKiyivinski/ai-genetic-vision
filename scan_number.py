@@ -6,9 +6,11 @@ import glob
 import copy
 import random
 import argparse
+from multiprocessing import Process, Queue
 
 MUTRATE = 1/9
 ADDRATE = 3
+SENRATE = 1000
 
 class Coordinates:
     def __init__(self, x, y):
@@ -116,21 +118,35 @@ class PNGMap:
                 encounters += 1
         return similarities / encounters
 
-def randParent(PNGMaps, totalFitness):
+def randParent(PNGMaps, totalFitness, compareMap, threadQueue):
     roulette = random.uniform(0, totalFitness)
-    fitness = 0
     for listMap in PNGMaps:
-        fitness += listMap.like(comparemap)
-        if fitness > roulette:
-            return listMap
+        roulette -= listMap.like(compareMap)
+        if roulette < 0:
+            threadQueue.put(listMap)
+            break
 
 def genParents(PNGMaps, compareMap):
     parentsA = []
     parentsB = []
     totalFitness = sum(listMap.like(compareMap) for listMap in PNGMaps)
+    threadsA = []
+    threadsB = []
+    queueA = Queue()
+    queueB = Queue()
     for listMap in PNGMaps:
-        parentsA.append(randParent(PNGMaps, totalFitness))
-        parentsB.append(randParent(PNGMaps, totalFitness))
+        threadA = Process(target=randParent, args=(PNGMaps, totalFitness, compareMap, queueA))
+        threadB = Process(target=randParent, args=(PNGMaps, totalFitness, compareMap, queueB))
+        threadA.start()
+        threadB.start()
+        threadsA.append(threadA)
+        threadsB.append(threadB)
+    for thread in threadsA:
+        parentsA.append(queueA.get())
+        thread.join()
+    for thread in threadsB:
+        parentsB.append(queueB.get())
+        thread.join()
     return parentsA, parentsB
 
 def getPNGArray(bitmapFile):
@@ -164,7 +180,6 @@ def main(args):
     setVerbose = args.verbose
     bitmapFile = args.file
     resourceDir = args.resources
-    print(resourceDir)
     if setVerbose:
         print('Reading bitmap %s' % bitmapFile)
     resourcePNG = getPNGResource(resourceDir)
@@ -184,6 +199,8 @@ def main(args):
         userMutations.append(mutationNext)
     for resourceBitmap in resourcePNG:
         parentsA, parentsB = genParents(userMutations, resourceBitmap)
+        for i in range(0, len(parentsA)):
+            newChild = parentsA[i].breed(parentsB[i])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
