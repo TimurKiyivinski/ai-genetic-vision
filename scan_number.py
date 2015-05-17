@@ -11,6 +11,8 @@ from multiprocessing import Process, Queue
 MUTRATE = 1/9
 ADDRATE = 3
 GENRATE = 6
+SIMRATE = 0.95
+RECRATE = 120
 
 class Coordinates:
     def __init__(self, x, y):
@@ -65,14 +67,16 @@ class PNGMap:
                     if self.bitmap[i][ii] != self.white:
                         charCo.append(Coordinates(i, ii))
             noAdds = random.randrange(1, ADDRATE)
-            print('Number of mutations: %i' % noAdds)
             for i in range(0, noAdds):
-                print('Addition number: %i' % i)
                 addAt = random.randrange(0, len(charCo))
                 addFriend = charCo[addAt]
                 addX, addY = addFriend.get()
                 added = False
+                tries = []
                 while not added:
+                    if len(set([0, 1, 2, 3]) & set(tries)) == 4:
+                        i -= 1
+                        break
                     addDir = random.randrange(0, 4)
                     if addDir in range(0, 2):
                         if addX in range(1, self.dim):
@@ -80,11 +84,13 @@ class PNGMap:
                                 if not self.surrounded(addX - 1, addY):
                                     self.bitmap[addX - 1][addY] = self.inverse(self.bitmap[addX - 1][addY])
                                 else:
+                                    tries.append(0)
                                     continue
                             elif addDir == 1:
                                 if not self.surrounded(addX + 1, addY):
                                     self.bitmap[addX + 1][addY] = self.inverse(self.bitmap[addX + 1][addY])
                                 else:
+                                    tries.append(1)
                                     continue
                             added = True
                         else:
@@ -95,11 +101,13 @@ class PNGMap:
                                 if not self.surrounded(addX, addY - 1):
                                     self.bitmap[addX][addY - 1] = self.inverse(self.bitmap[addX][addY - 1])
                                 else:
+                                    tries.append(2)
                                     continue
                             elif addDir == 3:
                                 if not self.surrounded(addX, addY + 1):
                                     self.bitmap[addX][addY + 1] = self.inverse(self.bitmap[addX][addY + 1])
                                 else:
+                                    tries.append(3)
                                     continue
                             added = True
                         else:
@@ -151,11 +159,12 @@ def genParents(PNGMaps, compareMap):
         thread.join()
     return parentsA, parentsB
 
-def createGenerations(userMutations, resourceBitmap, finalMutation):
+def createGenerations(userMutations, resourceBitmap, finalMutation, recursionDepth = 0):
     if not finalMutation.empty():
         return
+    recursionDepth += 1
     for userChild in userMutations:
-        if resourceBitmap.like(userChild) >= 0.98:
+        if resourceBitmap.like(userChild) >= SIMRATE:
             finalMutation.put(resourceBitmap)
             finalMutation.put(userChild)
             return
@@ -164,7 +173,8 @@ def createGenerations(userMutations, resourceBitmap, finalMutation):
     for i in range(0, len(parentsA)):
         newChild = parentsA[i].breed(parentsB[i])
         newChildren.append(newChild)
-    createGenerations(newChildren, resourceBitmap, finalMutation)
+    if recursionDepth < RECRATE:
+        createGenerations(newChildren, resourceBitmap, finalMutation, recursionDepth)
 
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
@@ -219,7 +229,7 @@ def main(args):
     threads = []
     finalMutation = Queue()
     for resourceBitmap in resourcePNG:
-        if resourceBitmap.like(userMap) >= 0.98:
+        if resourceBitmap.like(userMap) >= SIMRATE:
             finalMutation.put(resourceBitmap)
             finalMutation.put(userMap)
             break
@@ -228,11 +238,14 @@ def main(args):
         threads.append(thread)
     for thread in threads:
         thread.join()
-    valueMap = finalMutation.get()
-    print('The detected value is %s.' % valueMap.name)
-    valueMap = finalMutation.get()
-    print('The final mutation is:')
-    printPNGArray(valueMap.bitmap)
+    if not finalMutation.empty():
+        valueMap = finalMutation.get()
+        print('The detected value is %s.' % valueMap.name)
+        valueMap = finalMutation.get()
+        print('The final mutation is:')
+        printPNGArray(valueMap.bitmap)
+    else:
+        print('No matches found.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
