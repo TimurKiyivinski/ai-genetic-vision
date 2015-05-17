@@ -10,7 +10,7 @@ from multiprocessing import Process, Queue
 
 MUTRATE = 1/9
 ADDRATE = 3
-SENRATE = 1000
+GENRATE = 6
 
 class Coordinates:
     def __init__(self, x, y):
@@ -49,8 +49,7 @@ class PNGMap:
         return bitmapLine
     def breed(self, partnerMap):
         babyArray = []
-        splitLine = random.randint(1, self.dim - 1)
-        print(splitLine)
+        splitLine = random.randrange(1, self.dim)
         for i in range(0, splitLine):
             babyArray.append(self.bitmap[i])
         for i in range(splitLine + 1, self.dim):
@@ -58,7 +57,6 @@ class PNGMap:
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
     def mutate(self):
-        mutationType = random.randint(0, 2)
         mutationType = 0
         if mutationType == 0:
             charCo = []
@@ -66,14 +64,16 @@ class PNGMap:
                 for ii in range(0, self.dim):
                     if self.bitmap[i][ii] != self.white:
                         charCo.append(Coordinates(i, ii))
-            noAdds = random.randint(1, ADDRATE)
+            noAdds = random.randrange(1, ADDRATE)
+            print('Number of mutations: %i' % noAdds)
             for i in range(0, noAdds):
-                addAt = random.randint(0, len(charCo) - 1)
+                print('Addition number: %i' % i)
+                addAt = random.randrange(0, len(charCo))
                 addFriend = charCo[addAt]
                 addX, addY = addFriend.get()
                 added = False
                 while not added:
-                    addDir = random.randint(0, 3)
+                    addDir = random.randrange(0, 4)
                     if addDir in range(0, 2):
                         if addX in range(1, self.dim):
                             if addDir == 0:
@@ -142,12 +142,29 @@ def genParents(PNGMaps, compareMap):
         threadsA.append(threadA)
         threadsB.append(threadB)
     for thread in threadsA:
-        parentsA.append(queueA.get())
+        if not queueA.empty():
+            parentsA.append(queueA.get())
         thread.join()
     for thread in threadsB:
-        parentsB.append(queueB.get())
+        if not queueB.empty():
+            parentsB.append(queueB.get())
         thread.join()
     return parentsA, parentsB
+
+def createGenerations(userMutations, resourceBitmap, finalMutation):
+    if not finalMutation.empty():
+        return
+    for userChild in userMutations:
+        if resourceBitmap.like(userChild) >= 0.98:
+            finalMutation.put(resourceBitmap)
+            finalMutation.put(userChild)
+            return
+    parentsA, parentsB = genParents(userMutations, resourceBitmap)
+    newChildren = []
+    for i in range(0, len(parentsA)):
+        newChild = parentsA[i].breed(parentsB[i])
+        newChildren.append(newChild)
+    createGenerations(newChildren, resourceBitmap, finalMutation)
 
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
@@ -193,14 +210,29 @@ def main(args):
             print('Resource file (%s):' % resourceBitmap.name)
             printPNGArray(resourceBitmap.bitmap)
     userMutations = []
-    for i in range(0, 16):
+    for i in range(0, GENRATE):
+        if setVerbose:
+            print('Generating user mutation no (%i)' % i)
         mutationNext = copy.deepcopy(userMap)
         mutationNext.mutate()
         userMutations.append(mutationNext)
+    threads = []
+    finalMutation = Queue()
     for resourceBitmap in resourcePNG:
-        parentsA, parentsB = genParents(userMutations, resourceBitmap)
-        for i in range(0, len(parentsA)):
-            newChild = parentsA[i].breed(parentsB[i])
+        if resourceBitmap.like(userMap) >= 0.98:
+            finalMutation.put(resourceBitmap)
+            finalMutation.put(userMap)
+            break
+        thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+    valueMap = finalMutation.get()
+    print('The detected value is %s.' % valueMap.name)
+    valueMap = finalMutation.get()
+    print('The final mutation is:')
+    printPNGArray(valueMap.bitmap)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
