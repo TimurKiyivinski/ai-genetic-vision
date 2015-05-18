@@ -10,9 +10,9 @@ from multiprocessing import Process, Queue
 
 MUTRATE = 7
 ADDRATE = 6
-GENRATE = 6
-SIMRATE = 0.9
-RECRATE = 300
+GENRATE = 10
+SIMRATE = 0.6
+RECRATE = 40
 
 class Coordinates:
     def __init__(self, x, y):
@@ -35,16 +35,16 @@ class PNGMap:
             return self.white
     def surrounded(self, x, y):
         sim = 0
-        if x > 0:
+        if x > 0 and y in range(0, self.dim):
             if self.bitmap[x - 1][y] != self.white:
                 sim += 1
-        if x < len(self.bitmap):
+        if x < len(self.bitmap) - 1 and y in range(0, self.dim):
             if self.bitmap[x + 1][y] != self.white:
                 sim += 1
-        if y > 0:
+        if y > 0 and x in range(0, self.dim):
             if self.bitmap[x][y - 1] != self.white:
                 sim += 1
-        if y < len(self.bitmap[0]):
+        if y < len(self.bitmap[0]) - 1 and x in range(0, self.dim):
             if self.bitmap[x][y + 1] != self.white:
                 sim += 1
         return sim == 4
@@ -84,13 +84,13 @@ class PNGMap:
                     addDir = random.randrange(0, 4)
                     if addDir in range(0, 2):
                         if addX in range(1, self.dim):
-                            if addDir == 0:
+                            if addDir == 0 and addX > 0:
                                 if not self.surrounded(addX - 1, addY):
                                     self.bitmap[addX - 1][addY] = self.inverse(self.bitmap[addX - 1][addY])
                                 else:
                                     tries.append(0)
                                     continue
-                            elif addDir == 1:
+                            elif addDir == 1 and addX < self.dim - 1:
                                 if not self.surrounded(addX + 1, addY):
                                     self.bitmap[addX + 1][addY] = self.inverse(self.bitmap[addX + 1][addY])
                                 else:
@@ -101,13 +101,13 @@ class PNGMap:
                             continue
                     elif addDir in range(2, 4):
                         if addY in range(1, self.dim):
-                            if addDir == 2:
+                            if addDir == 2 and addY > 0:
                                 if not self.surrounded(addX, addY - 1):
                                     self.bitmap[addX][addY - 1] = self.inverse(self.bitmap[addX][addY - 1])
                                 else:
                                     tries.append(2)
                                     continue
-                            elif addDir == 3:
+                            elif addDir == 3 and addY < self.dim - 1:
                                 if not self.surrounded(addX, addY + 1):
                                     self.bitmap[addX][addY + 1] = self.inverse(self.bitmap[addX][addY + 1])
                                 else:
@@ -199,6 +199,7 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
     recursionDepth += 1
     for userChild in userMutations:
         #if resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
+        #if userChild.like(resourceBitmap) + userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) + bestMap.like(resourceBitmap):
         if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
             bestMap = copy.deepcopy(userChild)
             bestMutation.put(bestMap)
@@ -213,7 +214,7 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
         newChildren = []
         for i in range(0, len(parentsA)):
             newChild = parentsA[i].breed(parentsB[i])
-            if random.randint(0, 100) % MUTRATE == 1:
+            if random.randint(0, 10) % MUTRATE == 1:
                 newChild.mutate()
             newChildren.append(newChild)
         createGenerations(newChildren, resourceBitmap, finalMutation, bestMutation, recursionDepth, bestMap)
@@ -290,12 +291,6 @@ def main(args):
     finalMutation = Queue()
     bestMutation = Queue()
     for resourceBitmap in resourcePNG:
-        #if resourceBitmap.like(userMap) >= SIMRATE:
-        #if userMap.like(resourceBitmap) >= SIMRATE:
-        #    finalMutation.put(resourceBitmap)
-        #    finalMutation.put(userMap)
-        #    print('Early solution found!')
-        #    break
         thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation))
         thread.start()
         threads.append(thread)
