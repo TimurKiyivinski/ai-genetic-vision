@@ -8,10 +8,10 @@ import random
 import argparse
 from multiprocessing import Process, Queue
 
-MUTRATE = 7
+MUTRATE = 2
 ADDRATE = 6
 GENRATE = 10
-SIMRATE = 0.6
+SIMRATE = 0.7
 RECRATE = 40
 
 class Coordinates:
@@ -202,7 +202,7 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
         #if userChild.like(resourceBitmap) + userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) + bestMap.like(resourceBitmap):
         if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
             bestMap = copy.deepcopy(userChild)
-            bestMutation.put(bestMap)
+            bestMutation.put_nowait(bestMap)
         #if resourceBitmap.like(userChild) >= SIMRATE:
         if userChild.like(resourceBitmap) >= SIMRATE:
             finalMutation.put(resourceBitmap)
@@ -213,7 +213,7 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
         parentsA, parentsB = genParents(userMutations, resourceBitmap)
         newChildren = []
         for i in range(0, len(parentsA)):
-            newChild = parentsA[i].breed(parentsB[i])
+            newChild = copy.deepcopy(parentsA[i].breed(parentsB[i]))
             if random.randint(0, 10) % MUTRATE == 1:
                 newChild.mutate()
             newChildren.append(newChild)
@@ -238,7 +238,7 @@ def getPNGResource(resourceDir):
     resourceList = os.listdir(resourceDir)
     for PNGFile in resourceList:
         PNGArray = getPNGArray(os.path.join(resourceDir, PNGFile))
-        PNGBitmap = PNGMap(PNGFile[:-4], PNGArray)
+        PNGBitmap = PNGMap(PNGFile[0], PNGArray)
         PNGList.append(PNGBitmap)
     return PNGList
 
@@ -295,17 +295,23 @@ def main(args):
         thread.start()
         threads.append(thread)
     for thread in threads:
-        thread.join(12)
+        thread.join(1)
     if not finalMutation.empty():
-        valueMap = finalMutation.get()
-        print('The detected value is %s.' % valueMap.name)
-        valueMap = finalMutation.get()
-        print('The final mutation is:')
-        printPNGArray(valueMap.bitmap)
+        while not finalMutation.empty():
+            resourceMap = finalMutation.get()
+            print('The detected value is %s.' % resourceMap.name)
+            valueMap = finalMutation.get()
+            print('The final mutation is:')
+            printPNGArray(valueMap.bitmap)
+            print('Similarity:')
+            print(valueMap.like(resourceMap))
+            for thread in threads:
+                thread.terminate()
+        return 0
     elif not bestMutation.empty():
         bestList = []
         while not bestMutation.empty():
-            nextBest = bestMutation.get_nowait()
+            nextBest = bestMutation.get()
             bestList.append(nextBest)
         allBest = bestList[0]
         resourceBest = resourcePNG[0]
@@ -318,9 +324,12 @@ def main(args):
         print('The closest detected value is %s.' % resourceBest.name)
         print('The final mutation is:')
         printPNGArray(allBest.bitmap)
+        for thread in threads:
+            thread.terminate()
+        return 0
     else:
         print('No matches found.')
-    return
+        return 1
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
@@ -330,4 +339,4 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--resources', help='Resource directory name', default='resources', required=False)
     parser.add_argument('-v', '--verbose', help='Verbose logging', action='store_true')
     args = parser.parse_args()
-    main(args)
+    quit(main(args))
