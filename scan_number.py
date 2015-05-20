@@ -10,7 +10,7 @@ from multiprocessing import Process, Queue
 
 MUTRATE = 2
 ADDRATE = 6
-GENRATE = 10
+GENRATE = 6
 SIMRATE = 0.7
 RECRATE = 40
 
@@ -63,8 +63,8 @@ class PNGMap:
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
     def mutate(self):
-        mutationType = random.randrange(0, 3)
-        if mutationType == 0:
+        mutationType = random.randrange(0, 10)
+        if mutationType < 6:
             charCo = []
             for i in range(0, self.dim):
                 for ii in range(0, self.dim):
@@ -116,7 +116,7 @@ class PNGMap:
                             added = True
                         else:
                             continue
-        elif mutationType == 1:
+        elif mutationType < 8:
             moveDir = random.randrange(0, 4)
             noAdds = random.randrange(1, ADDRATE)
             for i in range(0, noAdds):
@@ -137,7 +137,7 @@ class PNGMap:
                     for row in self.bitmap:
                         row.pop(len(row) - 1)
                         row.insert(0, self.white)
-        elif mutationType == 2:
+        elif mutationType < 10:
             noAdds = random.randrange(1, ADDRATE)
             for row in self.bitmap:
                 for i in range(0, len(row) - 1):
@@ -199,8 +199,8 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
     recursionDepth += 1
     for userChild in userMutations:
         #if resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
-        #if userChild.like(resourceBitmap) + userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) + bestMap.like(resourceBitmap):
-        if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
+        if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) or resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
+        #if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
             bestMap = copy.deepcopy(userChild)
             bestMutation.put_nowait(bestMap)
         #if resourceBitmap.like(userChild) >= SIMRATE:
