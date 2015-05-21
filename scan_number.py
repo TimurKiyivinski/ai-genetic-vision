@@ -8,7 +8,7 @@ import random
 import argparse
 from multiprocessing import Process, Queue
 
-MUTRATE = 2
+MUTRATE = 8
 ADDRATE = 6
 GENRATE = 6
 SIMRATE = 0.7
@@ -63,6 +63,7 @@ class PNGMap:
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
     def mutate(self):
+        # need to improve this for user detection.. most probable culprit
         mutationType = random.randrange(0, 10)
         if mutationType < 6:
             charCo = []
@@ -214,7 +215,7 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
         newChildren = []
         for i in range(0, len(parentsA)):
             newChild = copy.deepcopy(parentsA[i].breed(parentsB[i]))
-            if random.randint(0, 10) % MUTRATE == 1:
+            if random.randint(0, 10) % MUTRATE >= 1:
                 newChild.mutate()
             newChildren.append(newChild)
         createGenerations(newChildren, resourceBitmap, finalMutation, bestMutation, recursionDepth, bestMap)
