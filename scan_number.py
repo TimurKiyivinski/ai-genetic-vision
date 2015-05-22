@@ -8,12 +8,18 @@ import random
 import argparse
 from multiprocessing import Process, Queue
 
+# Mutation rate out of 10; n % 10 == 1
 MUTRATE = 8
+# Number of possible mutations added
 ADDRATE = 6
+# Number of children generated
 GENRATE = 6
+# Similarity rate required for bitmap comparisons
 SIMRATE = 0.7
+# Maximum number of generations
 RECRATE = 40
 
+# Class to contain the X and Y coordinates
 class Coordinates:
     def __init__(self, x, y):
         self.x = x
@@ -21,6 +27,7 @@ class Coordinates:
     def get(self):
         return self.x, self.y
 
+# Main PNG Bitmap class, stores all the bitmaps
 class PNGMap:
     def __init__(self, PNGName, PNGArray = [[]], PNGWhite = 1):
         self.name = PNGName
@@ -62,6 +69,7 @@ class PNGMap:
             babyArray.append(partnerMap.bitmap[i])
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
+    # Mutates the current bitmap, vital part of a genetic algorithm
     def mutate(self):
         # need to improve this for user detection.. most probable culprit
         mutationType = random.randrange(0, 10)
@@ -146,6 +154,8 @@ class PNGMap:
                         if row[i + 1] == self.white:
                             row[i + 1] = row[i]
                             break
+    # Checks how similar another bitmap is compared
+    # to the current bitmap
     def like(self, comparePNG):
         if self.size != comparePNG.size:
             return 0
@@ -250,6 +260,7 @@ def printPNGArray(bitmapArr):
         print('')
 
 def main(args):
+    # Read the command line arguments and set default values
     setVerbose = args.verbose
     bitmapFile = args.file
     compareFile = args.compare
@@ -258,6 +269,7 @@ def main(args):
     print('Reading bitmap %s' % bitmapFile)
     bitmapArr = getPNGArray(bitmapFile)
     userMap = PNGMap('User', bitmapArr)
+    # Compare Operation
     if compareFile != '':
         compareArr = getPNGArray(compareFile)
         compareMap = PNGMap('Compare', compareArr)
@@ -270,6 +282,8 @@ def main(args):
         print('Similarity between %s and %s is:' % (userMap.name, compareMap.name))
         print(userMap.like(compareMap))
         return
+    # Normal operation
+    # Load all the resources into an array
     resourcePNG = getPNGResource(resourceDir)
     if setVerbose:
         print('User bitmap:')
@@ -292,7 +306,7 @@ def main(args):
     finalMutation = Queue()
     bestMutation = Queue()
     for resourceBitmap in resourcePNG:
-        thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation))
+        thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation, 0, userMutations[0]))
         thread.start()
         threads.append(thread)
     for thread in threads:
@@ -319,7 +333,7 @@ def main(args):
         for resourceBitmap in resourcePNG:
             for bestBitmap in bestList:
                 #if resourceBitmap.like(bestBitmap) > resourceBitmap.like(allBest):
-                if bestBitmap.like(resourceBitmap) > allBest.like(resourceBitmap):
+                if bestBitmap.like(resourceBitmap) > allBest.like(resourceBitmap) or resourceBitmap.like(bestBitmap) > resourceBitmap.like(allBest):
                     allBest = bestBitmap
                     resourceBest = resourceBitmap
         print('The closest detected value is %s.' % resourceBest.name)
