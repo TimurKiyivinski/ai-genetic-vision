@@ -232,6 +232,29 @@ def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation
     else:
         return
 
+def evolutionGen(userMutations, resourceBitmaps, finalMutation, bestMutation, recursionDepth = 0):
+    if not finalMutation.empty():
+        return
+    recursionDepth += 1
+    for userChild in userMutations:
+        for resourceBitmap in resourceBitmaps:
+            if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) or resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
+                bestMap = copy.deepcopy(userChild)
+                bestMutation.put(bestMap)
+            if userChild.like(resourceBitmap) >= SIMRATE:
+                finalMutation.put(resourceBitmap)
+                finalMutation.put(userChild)
+                return
+    if recursionDepth < RECRATE:
+        parentsA, parentsB = genPairs(userMutations, resourceBitmaps)
+        newChildren = []
+        for i in range(0, len(parentsA)):
+            newChild = copy.deepcopy(parentsA[i].breed(parentsB[i]))
+            if random.randint(0, 10) % MUTRATE >= 1:
+                newChild.mutate()
+            newChildren.append(newChild)
+        evolutionGen(newChildren, resourceBitmaps, finalMutation, bestMutation, recursionDepth)
+
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
     userPNG = png.Reader(userFile)
@@ -305,12 +328,13 @@ def main(args):
     threads = []
     finalMutation = Queue()
     bestMutation = Queue()
-    for resourceBitmap in resourcePNG:
-        thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation, 0, userMutations[0]))
-        thread.start()
-        threads.append(thread)
-    for thread in threads:
-        thread.join(1)
+    #for resourceBitmap in resourcePNG:
+    #    thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation, 0, userMutations[0]))
+    #    thread.start()
+    #    threads.append(thread)
+    #for thread in threads:
+    #    thread.join(1)
+    # Results
     if not finalMutation.empty():
         while not finalMutation.empty():
             resourceMap = finalMutation.get()
