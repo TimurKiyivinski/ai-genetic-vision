@@ -1,5 +1,6 @@
 #!/bin/sh
-for x in resources/2*.png;
+MUTCOUNT=4
+for res in resources/*.png;
 do
-    python3 scan_number.py -f user/0.png -c $x -m 4
+    python3 scan_number.py -f user/0.png -c $res -m $MUTCOUNT
 done
