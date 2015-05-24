@@ -69,6 +69,47 @@ class PNGMap:
             babyArray.append(partnerMap.bitmap[i])
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
+    def lmost(self):
+        leftMost = self.dim
+        for row in self.bitmap:
+            for i in range(0, self.dim):
+                if row[i] != self.white:
+                    if i < leftMost:
+                        leftMost = i
+        return leftMost
+    def rmost(self):
+        rightMost = 0
+        for row in self.bitmap:
+            for i in range(0, self.dim):
+                if row[i] != self.white:
+                    if i > rightMost:
+                        rightMost = i
+        return rightMost
+    def umost(self):
+        for i in range(0, self.dim):
+            for ii in range(0, self.dim):
+                if self.bitmap[i][ii] != self.white:
+                    return i
+    def dmost(self):
+        downMost = 0
+        for i in range(0, self.dim):
+            for ii in range(0, self.dim):
+                if self.bitmap[i][ii] != self.white:
+                    if i > downMost:
+                        downMost = i
+        return downMost
+    def zone(self):
+        zoneBitmap = self.bitmap
+        for i in range(self.umost(), self.dmost()):
+            for ii in range(self.lmost(), self.rmost() + 1):
+                if zoneBitmap[i][ii] != self.white:
+                    zoneBitmap[i][ii] = self.white
+                    break
+            for ii in reversed(range(self.lmost(), self.rmost() + 1)):
+                print('b')
+                if zoneBitmap[i][ii] != self.white:
+                    zoneBitmap[i][ii] = self.white
+                    break
     # Mutates the current bitmap, vital part of a genetic algorithm
     def mutate(self):
         # need to improve this for user detection.. most probable culprit
@@ -125,28 +166,7 @@ class PNGMap:
                             added = True
                         else:
                             continue
-        elif mutationType < 8:
-            moveDir = random.randrange(0, 4)
-            noAdds = random.randrange(1, ADDRATE)
-            for i in range(0, noAdds):
-                if moveDir == 0:
-                    self.bitmap.pop(0)
-                    self.bitmap.append([self.white for i in range(0, self.dim)])
-                elif moveDir == 1:
-                    self.bitmap.pop(self.dim - 1)
-                    bitmapClone = []
-                    bitmapClone.append([self.white for i in range(0, self.dim)])
-                    bitmapClone += self.bitmap
-                    self.bitmap = bitmapClone
-                elif moveDir == 2:
-                    for row in self.bitmap:
-                        row.pop(0)
-                        row.append(self.white)
-                elif moveDir == 3:
-                    for row in self.bitmap:
-                        row.pop(len(row) - 1)
-                        row.insert(0, self.white)
-        elif mutationType < 10:
+        elif mutationType > 8:
             noAdds = random.randrange(1, ADDRATE)
             for row in self.bitmap:
                 for i in range(0, len(row) - 1):
@@ -170,81 +190,57 @@ class PNGMap:
                         similarities += 1
                     encounters += 1
         return similarities / encounters
-
-def randParent(PNGMaps, totalFitness, compareMap, threadQueue):
+    def sim(self, comparePNGs):
+        similarities = 0
+        for comparePNG in comparePNGs:
+            similarities += self.like(comparePNG)
+        return similarities
+        
+def randPair(PNGMaps, compareMaps, totalFitness, threadQueue):
     roulette = random.uniform(0, totalFitness)
     for listMap in PNGMaps:
-        roulette -= listMap.like(compareMap)
+        roulette -= listMap.sim(compareMaps)
         if roulette < 0:
             threadQueue.put(listMap)
             break
 
-def genParents(PNGMaps, compareMap):
-    parentsA = []
-    parentsB = []
-    totalFitness = sum(listMap.like(compareMap) for listMap in PNGMaps)
+def genPairs(PNGMaps, compareMaps):
+    pairA = []
+    pairB = []
+    totalFitness = len(compareMaps)
     threadsA = []
     threadsB = []
     queueA = Queue()
     queueB = Queue()
     for listMap in PNGMaps:
-        threadA = Process(target=randParent, args=(PNGMaps, totalFitness, compareMap, queueA))
-        threadB = Process(target=randParent, args=(PNGMaps, totalFitness, compareMap, queueB))
+        threadA = Process(target=randPair , args=(PNGMaps, compareMaps, totalFitness, queueA))
+        threadB = Process(target=randPair , args=(PNGMaps, compareMaps, totalFitness, queueB))
         threadA.start()
         threadB.start()
         threadsA.append(threadA)
         threadsB.append(threadB)
     for thread in threadsA:
         if not queueA.empty():
-            parentsA.append(queueA.get())
+            pairA.append(queueA.get())
         thread.join()
     for thread in threadsB:
         if not queueB.empty():
-            parentsB.append(queueB.get())
+            pairB.append(queueB.get())
         thread.join()
-    return parentsA, parentsB
+    return pairA, pairB
 
-def createGenerations(userMutations, resourceBitmap, finalMutation, bestMutation, recursionDepth = 0, bestMap = PNGMap('NA')):
-    if not finalMutation.empty():
-        return
+def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap = PNGMap('Default')):
     recursionDepth += 1
     for userChild in userMutations:
-        #if resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
-        if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) or resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
-        #if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
-            bestMap = copy.deepcopy(userChild)
-            bestMutation.put_nowait(bestMap)
-        #if resourceBitmap.like(userChild) >= SIMRATE:
-        if userChild.like(resourceBitmap) >= SIMRATE:
-            finalMutation.put(resourceBitmap)
-            finalMutation.put(userChild)
-            print('Solution found at generation: %i' % recursionDepth)
-            return
-    if recursionDepth < RECRATE:
-        parentsA, parentsB = genParents(userMutations, resourceBitmap)
-        newChildren = []
-        for i in range(0, len(parentsA)):
-            newChild = copy.deepcopy(parentsA[i].breed(parentsB[i]))
-            if random.randint(0, 10) % MUTRATE >= 1:
-                newChild.mutate()
-            newChildren.append(newChild)
-        createGenerations(newChildren, resourceBitmap, finalMutation, bestMutation, recursionDepth, bestMap)
-    else:
-        return
-
-def evolutionGen(userMutations, resourceBitmaps, finalMutation, bestMutation, recursionDepth = 0):
-    if not finalMutation.empty():
-        return
-    recursionDepth += 1
-    for userChild in userMutations:
+        finalRes = False
         for resourceBitmap in resourceBitmaps:
-            if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap) or resourceBitmap.like(userChild) > resourceBitmap.like(bestMap):
+            if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
                 bestMap = copy.deepcopy(userChild)
-                bestMutation.put(bestMap)
+                resMap = resourceBitmap
             if userChild.like(resourceBitmap) >= SIMRATE:
-                finalMutation.put(resourceBitmap)
-                finalMutation.put(userChild)
-                return
+                finalRes = resourceBitmap
+        if finalRes != False:
+            return userChild, finalRes
     if recursionDepth < RECRATE:
         parentsA, parentsB = genPairs(userMutations, resourceBitmaps)
         newChildren = []
@@ -253,7 +249,10 @@ def evolutionGen(userMutations, resourceBitmaps, finalMutation, bestMutation, re
             if random.randint(0, 10) % MUTRATE >= 1:
                 newChild.mutate()
             newChildren.append(newChild)
-        evolutionGen(newChildren, resourceBitmaps, finalMutation, bestMutation, recursionDepth)
+        return evolutionGen(newChildren, resourceBitmaps, recursionDepth, bestMap, resMap)
+    else:
+        print('Evolution ended at generation: %i' % recursionDepth)
+        return bestMap, resMap
 
 def getPNGArray(bitmapFile):
     userFile = open(bitmapFile, 'rb')
@@ -288,6 +287,7 @@ def main(args):
     bitmapFile = args.file
     compareFile = args.compare
     resourceDir = args.resources
+    saveDir = args.save
     mutateCount = int(args.mutate)
     print('Reading bitmap %s' % bitmapFile)
     bitmapArr = getPNGArray(bitmapFile)
@@ -328,47 +328,15 @@ def main(args):
     threads = []
     finalMutation = Queue()
     bestMutation = Queue()
-    #for resourceBitmap in resourcePNG:
-    #    thread = Process(target=createGenerations , args=(userMutations, resourceBitmap, finalMutation, bestMutation, 0, userMutations[0]))
-    #    thread.start()
-    #    threads.append(thread)
-    #for thread in threads:
-    #    thread.join(1)
+    finalUser, finalResource = evolutionGen(userMutations, resourcePNG, 0, userMap)
     # Results
-    if not finalMutation.empty():
-        while not finalMutation.empty():
-            resourceMap = finalMutation.get()
-            print('The detected value is %s.' % resourceMap.name)
-            valueMap = finalMutation.get()
-            print('The final mutation is:')
-            printPNGArray(valueMap.bitmap)
-            print('Similarity:')
-            print(valueMap.like(resourceMap))
-            for thread in threads:
-                thread.terminate()
-        return 0
-    elif not bestMutation.empty():
-        bestList = []
-        while not bestMutation.empty():
-            nextBest = bestMutation.get()
-            bestList.append(nextBest)
-        allBest = bestList[0]
-        resourceBest = resourcePNG[0]
-        for resourceBitmap in resourcePNG:
-            for bestBitmap in bestList:
-                #if resourceBitmap.like(bestBitmap) > resourceBitmap.like(allBest):
-                if bestBitmap.like(resourceBitmap) > allBest.like(resourceBitmap) or resourceBitmap.like(bestBitmap) > resourceBitmap.like(allBest):
-                    allBest = bestBitmap
-                    resourceBest = resourceBitmap
-        print('The closest detected value is %s.' % resourceBest.name)
-        print('The final mutation is:')
-        printPNGArray(allBest.bitmap)
-        for thread in threads:
-            thread.terminate()
-        return 0
-    else:
-        print('No matches found.')
-        return 1
+    print('The detected value is: %s' % finalResource.name)
+    if setVerbose:
+        printPNGArray(finalUser.bitmap)
+    if saveDir != False:
+        saveImage = png.from_array(finalUser.bitmap, 'L;1')
+        saveFile = open(saveDir, 'wb')
+        saveImage.save(saveFile)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts a numerical bitmap into text.')
@@ -376,6 +344,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--compare', help='Compare only a single file', default='', required=False)
     parser.add_argument('-m', '--mutate', help='Comparison mutate count ', default=0, required=False)
     parser.add_argument('-r', '--resources', help='Resource directory name', default='resources', required=False)
+    parser.add_argument('-s', '--save', help='Save solution image', default=False, required=False)
     parser.add_argument('-v', '--verbose', help='Verbose logging', action='store_true')
     args = parser.parse_args()
     quit(main(args))
