@@ -17,7 +17,7 @@ GENRATE = 6
 # Similarity rate required for bitmap comparisons
 SIMRATE = 0.7
 # Maximum number of generations
-RECRATE = 40
+RECRATE = 20
 
 # Class to contain the X and Y coordinates
 class Coordinates:
@@ -200,9 +200,9 @@ def randPair(PNGMaps, compareMaps, totalFitness, threadQueue):
     roulette = random.uniform(0, totalFitness)
     for listMap in PNGMaps:
         roulette -= listMap.sim(compareMaps)
-        if roulette < 0:
+        if roulette <= 0:
             threadQueue.put(listMap)
-            break
+            return
 
 def genPairs(PNGMaps, compareMaps):
     pairA = []
@@ -220,13 +220,13 @@ def genPairs(PNGMaps, compareMaps):
         threadsA.append(threadA)
         threadsB.append(threadB)
     for thread in threadsA:
-        if not queueA.empty():
-            pairA.append(queueA.get())
         thread.join()
     for thread in threadsB:
-        if not queueB.empty():
-            pairB.append(queueB.get())
         thread.join()
+    while not len(pairA) == len(PNGMaps):
+        pairA.append(queueA.get())
+    while not len(pairB) == len(PNGMaps):
+        pairB.append(queueB.get())
     return pairA, pairB
 
 def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap = PNGMap('Default')):
@@ -298,10 +298,11 @@ def main(args):
         compareMap = PNGMap('Compare', compareArr)
         for i in range(0, mutateCount):
             userMap.mutate()
-        print('User bitmap:')
-        printPNGArray(userMap.bitmap)
-        print('Compare bitmap:')
-        printPNGArray(compareMap.bitmap)
+        if setVerbose:
+            print('User bitmap:')
+            printPNGArray(userMap.bitmap)
+            print('Compare bitmap:')
+            printPNGArray(compareMap.bitmap)
         print('Similarity between %s and %s is:' % (userMap.name, compareMap.name))
         print(userMap.like(compareMap))
         return
