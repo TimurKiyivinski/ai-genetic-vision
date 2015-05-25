@@ -196,6 +196,7 @@ class PNGMap:
             similarities += self.like(comparePNG)
         return similarities
         
+#TODO: This function may or may not find a partner
 def randPair(PNGMaps, compareMaps, totalFitness, threadQueue):
     roulette = random.uniform(0, totalFitness)
     for listMap in PNGMaps:
@@ -219,18 +220,19 @@ def genPairs(PNGMaps, compareMaps):
         threadB.start()
         threadsA.append(threadA)
         threadsB.append(threadB)
-    for thread in threadsA:
-        thread.join()
-    for thread in threadsB:
-        thread.join()
     while not len(pairA) == len(PNGMaps):
         pairA.append(queueA.get())
     while not len(pairB) == len(PNGMaps):
         pairB.append(queueB.get())
+    for thread in threadsA:
+        thread.join()
+    for thread in threadsB:
+        thread.join()
     return pairA, pairB
 
 def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap = PNGMap('Default')):
     recursionDepth += 1
+    print('Currently at generation: %i' % recursionDepth)
     for userChild in userMutations:
         finalRes = False
         for resourceBitmap in resourceBitmaps:
