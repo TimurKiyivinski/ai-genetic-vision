@@ -15,7 +15,7 @@ ADDRATE = 6
 # Number of children generated
 GENRATE = 6
 # Similarity rate required for bitmap comparisons
-SIMRATE = 0.7
+SIMRATE = 0.5
 # Maximum number of generations
 RECRATE = 20
 
@@ -106,7 +106,6 @@ class PNGMap:
                     zoneBitmap[i][ii] = self.white
                     break
             for ii in reversed(range(self.lmost(), self.rmost() + 1)):
-                print('b')
                 if zoneBitmap[i][ii] != self.white:
                     zoneBitmap[i][ii] = self.white
                     break
@@ -181,29 +180,38 @@ class PNGMap:
             return 0
         thisPNGLine = self.line()
         comparePNGLine = comparePNG.line()
-        encounters = 0
         similarities = 0
+        encounters = 0
         for i in range(0, len(thisPNGLine)):
             for ii in range(0, len(thisPNGLine) - i):
                 if thisPNGLine[ii] != self.white:
                     if thisPNGLine[ii] == comparePNGLine[ii]:
                         similarities += 1
                     encounters += 1
-        return similarities / encounters
-    def sim(self, comparePNGs):
+        print('Similarities is %i' % similarities)
+        print('Encounters is %i' % encounters)
+        print('Like is %f' % float(float(similarities) / float(encounters)))
+        return float(float(similarities) / float(encounters))
+    def similar(self, comparePNGs):
         similarities = 0
         for comparePNG in comparePNGs:
-            similarities += self.like(comparePNG)
-        return similarities
+            print('S0 %f' % self.like(comparePNG))
+            similarities  += self.like(comparePNG)
+        print('S1 %f' % similarities)
+        print('S2 %f' % sum(float(self.like(comparePNG)) for comparePNG in comparePNGs))
+        return sum(float(self.like(comparePNG)) for comparePNG in comparePNGs)
         
 #TODO: This function may or may not find a partner
 def randPair(PNGMaps, compareMaps, totalFitness, threadQueue):
     roulette = random.uniform(0, totalFitness)
+    print('Roulette is %f' % roulette)
     for listMap in PNGMaps:
-        roulette -= listMap.sim(compareMaps)
+        roulette -= listMap.similar(compareMaps)
+        print('Sim is %f' % listMap.similar(compareMaps))
         if roulette <= 0:
             threadQueue.put(listMap)
             return
+    return PNGMaps[random.randint(0, len(PNGMaps) - 1)]
 
 def genPairs(PNGMaps, compareMaps):
     pairA = []
@@ -222,8 +230,10 @@ def genPairs(PNGMaps, compareMaps):
         threadsB.append(threadB)
     while not len(pairA) == len(PNGMaps):
         pairA.append(queueA.get())
+    print('Done A')
     while not len(pairB) == len(PNGMaps):
         pairB.append(queueB.get())
+    print('Done B')
     for thread in threadsA:
         thread.join()
     for thread in threadsB:
@@ -235,14 +245,17 @@ def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap
     print('Currently at generation: %i' % recursionDepth)
     for userChild in userMutations:
         finalRes = False
+        print('Test %f' % userChild.similar(resourceBitmaps))
         for resourceBitmap in resourceBitmaps:
+            print('Simrate is %f' % userChild.like(resourceBitmap))
             if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
                 bestMap = copy.deepcopy(userChild)
                 resMap = resourceBitmap
-            if userChild.like(resourceBitmap) >= SIMRATE:
-                finalRes = resourceBitmap
-        if finalRes != False:
-            return userChild, finalRes
+    if bestMap.like(resourceBitmap) >= SIMRATE:
+        print('finalRes')
+        return bestMap, resMap
+    if recursionDepth == 2:
+        return bestMap, resMap
     if recursionDepth < RECRATE:
         parentsA, parentsB = genPairs(userMutations, resourceBitmaps)
         newChildren = []
@@ -273,7 +286,7 @@ def getPNGResource(resourceDir):
     resourceList = os.listdir(resourceDir)
     for PNGFile in resourceList:
         PNGArray = getPNGArray(os.path.join(resourceDir, PNGFile))
-        PNGBitmap = PNGMap(PNGFile[0], PNGArray)
+        PNGBitmap = PNGMap(PNGFile, PNGArray)
         PNGList.append(PNGBitmap)
     return PNGList
 
