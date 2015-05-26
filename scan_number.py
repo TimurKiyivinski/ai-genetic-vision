@@ -65,7 +65,7 @@ class PNGMap:
         splitLine = random.randrange(1, self.dim)
         for i in range(0, splitLine):
             babyArray.append(self.bitmap[i])
-        for i in range(splitLine + 1, self.dim):
+        for i in range(splitLine, self.dim):
             babyArray.append(partnerMap.bitmap[i])
         babyMap = PNGMap(self.name, babyArray)
         return babyMap
@@ -188,29 +188,19 @@ class PNGMap:
                     if thisPNGLine[ii] == comparePNGLine[ii]:
                         similarities += 1
                     encounters += 1
-        print('Similarities is %i' % similarities)
-        print('Encounters is %i' % encounters)
-        print('Like is %f' % float(float(similarities) / float(encounters)))
         return float(float(similarities) / float(encounters))
     def similar(self, comparePNGs):
-        similarities = 0
-        for comparePNG in comparePNGs:
-            print('S0 %f' % self.like(comparePNG))
-            similarities  += self.like(comparePNG)
-        print('S1 %f' % similarities)
-        print('S2 %f' % sum(float(self.like(comparePNG)) for comparePNG in comparePNGs))
         return sum(float(self.like(comparePNG)) for comparePNG in comparePNGs)
         
 #TODO: This function may or may not find a partner
 def randPair(PNGMaps, compareMaps, totalFitness, threadQueue):
     roulette = random.uniform(0, totalFitness)
-    print('Roulette is %f' % roulette)
     for listMap in PNGMaps:
         roulette -= listMap.similar(compareMaps)
-        print('Sim is %f' % listMap.similar(compareMaps))
         if roulette <= 0:
             threadQueue.put(listMap)
             return
+    print('Error')
     return PNGMaps[random.randint(0, len(PNGMaps) - 1)]
 
 def genPairs(PNGMaps, compareMaps):
@@ -230,10 +220,8 @@ def genPairs(PNGMaps, compareMaps):
         threadsB.append(threadB)
     while not len(pairA) == len(PNGMaps):
         pairA.append(queueA.get())
-    print('Done A')
     while not len(pairB) == len(PNGMaps):
         pairB.append(queueB.get())
-    print('Done B')
     for thread in threadsA:
         thread.join()
     for thread in threadsB:
@@ -245,16 +233,12 @@ def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap
     print('Currently at generation: %i' % recursionDepth)
     for userChild in userMutations:
         finalRes = False
-        print('Test %f' % userChild.similar(resourceBitmaps))
         for resourceBitmap in resourceBitmaps:
-            print('Simrate is %f' % userChild.like(resourceBitmap))
-            if userChild.like(resourceBitmap) > bestMap.like(resourceBitmap):
+            if userChild.like(resourceBitmap) > bestMap.like(resMap):
                 bestMap = copy.deepcopy(userChild)
                 resMap = resourceBitmap
-    if bestMap.like(resourceBitmap) >= SIMRATE:
-        print('finalRes')
-        return bestMap, resMap
-    if recursionDepth == 2:
+    print('Last similarity is %f' % bestMap.like(resMap))
+    if bestMap.like(resMap) >= SIMRATE:
         return bestMap, resMap
     if recursionDepth < RECRATE:
         parentsA, parentsB = genPairs(userMutations, resourceBitmaps)
