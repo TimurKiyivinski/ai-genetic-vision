@@ -17,7 +17,7 @@ GENRATE = 6
 # Similarity rate required for bitmap comparisons
 SIMRATE = 0.5
 # Maximum number of generations
-RECRATE = 20
+RECRATE = 10
 
 # Class to contain the X and Y coordinates
 class Coordinates:
@@ -234,10 +234,18 @@ def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap
     for userChild in userMutations:
         finalRes = False
         for resourceBitmap in resourceBitmaps:
-            if userChild.like(resourceBitmap) > bestMap.like(resMap):
+            #if userChild.like(resourceBitmap) > bestMap.like(resMap):
+            #    print('Type 1')
+            #    bestMap = copy.deepcopy(userChild)
+            #    resMap = resourceBitmap
+            #if resourceBitmap.like(userChild) > resMap.like(bestMap):
+            #    print('Type 2')
+            #    bestMap = copy.deepcopy(userChild)
+            #    resMap = resourceBitmap
+            if userChild.like(resourceBitmap) + resourceBitmap.like(userChild) > bestMap.like(resMap) + resMap.like(bestMap):
                 bestMap = copy.deepcopy(userChild)
                 resMap = resourceBitmap
-    print('Last similarity is %f' % bestMap.like(resMap))
+    print('Current comparison is: %f' % bestMap.like(resMap))
     if bestMap.like(resMap) >= SIMRATE:
         return bestMap, resMap
     if recursionDepth < RECRATE:
@@ -325,12 +333,13 @@ def main(args):
         userMutations.append(mutationNext)
         if setVerbose:
             printPNGArray(mutationNext.bitmap)
-    threads = []
-    finalMutation = Queue()
-    bestMutation = Queue()
+    print('Initial similarity is: %f' % userMap.similar(resourcePNG))
     finalUser, finalResource = evolutionGen(userMutations, resourcePNG, 0, userMap)
     # Results
     print('The detected value is: %s' % finalResource.name)
+    print('Final similarity is: %f' % finalUser.similar(resourcePNG))
+    print('Initial comparison is: %f' % userMap.like(finalResource))
+    print('Final comparison is: %f' % finalUser.like(finalResource))
     if setVerbose:
         printPNGArray(finalUser.bitmap)
     if saveDir != False:
