@@ -17,8 +17,6 @@ GENRATE = 6
 SIMRATE = 0.5
 # Maximum number of generations
 RECRATE = 5
-# Rate at which to ignore resource
-KILRATE = 0.2
 
 # Class to contain the X and Y coordinates
 class Coordinates:
@@ -352,14 +350,16 @@ def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap
     recursionDepth += 1
     print('Currently at generation: %i' % recursionDepth)
     # Iterate list of PNGMaps and set the best as the current detected solution
+    bestRate = bestMap.like(resMap)
     for userChild in userMutations:
         for resourceBitmap in resourceBitmaps:
-            if userChild.like(resourceBitmap) + resourceBitmap.like(userChild) > bestMap.like(resMap) + resMap.like(bestMap):
+            if userChild.like(resourceBitmap) + resourceBitmap.like(userChild) > bestRate + resMap.like(bestMap):
                 bestMap = copy.deepcopy(userChild)
                 resMap = resourceBitmap
-    print('Current comparison is: %f' % bestMap.like(resMap))
+                bestRate = bestMap.like(resMap)
+    print('Current comparison is: %f' % bestRate)
     # Return the best if their similarity is past the SIMRATE
-    if bestMap.like(resMap) >= SIMRATE:
+    if bestRate >= SIMRATE:
         return bestMap, resMap
     # Recursively call this function until RECRATE is reached
     if recursionDepth < RECRATE:
