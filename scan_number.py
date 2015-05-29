@@ -16,7 +16,7 @@ GENRATE = 6
 # Similarity rate required for bitmap comparisons
 SIMRATE = 0.5
 # Maximum number of generations
-RECRATE = 10
+RECRATE = 5
 
 # Class to contain the X and Y coordinates
 class Coordinates:
@@ -388,7 +388,7 @@ def getPNGResource(resourceDir):
     resourceList = os.listdir(resourceDir)
     for PNGFile in resourceList:
         PNGArray = getPNGArray(os.path.join(resourceDir, PNGFile))
-        PNGBitmap = PNGMap(PNGFile, PNGArray)
+        PNGBitmap = PNGMap(PNGFile[0], PNGArray)
         PNGList.append(PNGBitmap)
     return PNGList
 
