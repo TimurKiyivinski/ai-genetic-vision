@@ -8,7 +8,7 @@ import argparse
 from multiprocessing import Process, Queue
 
 # Mutation rate out of 10; n % 10 == 1
-MUTRATE = 8
+MUTRATE = 5
 # Number of possible mutations added
 ADDRATE = 6
 # Number of children generated
@@ -407,7 +407,7 @@ getPNGResource
 
 Loads all the resources from the resource directory
 
-resourceDir     String:     Directory to laod comparison bitmaps
+resourceDir     String:     Directory to load comparison bitmaps
 
 returns:        List
 '''
