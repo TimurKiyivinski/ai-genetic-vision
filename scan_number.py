@@ -17,6 +17,8 @@ GENRATE = 6
 SIMRATE = 0.5
 # Maximum number of generations
 RECRATE = 5
+# Rate at which to ignore resource
+KILRATE = 0.2
 
 # Class to contain the X and Y coordinates
 class Coordinates:
@@ -210,6 +212,8 @@ class PNGMap:
     PNGMap.like
 
     Compares a PNGMap with another
+    
+    comparePNG  List:   List of PNGMaps to compare
 
     returns:    Float
     '''
@@ -228,6 +232,18 @@ class PNGMap:
                     encounters += 1
         return float(float(similarities) / float(encounters))
     '''
+    PNGMap.likeq
+
+    Compares a PNGMap with another
+    
+    comparePNG  List:   List of PNGMaps to compare
+    resultQueue Queue:  Queue to put result in
+
+    returns:    Float
+    '''
+    def likeq(self, comparePNG, resultQueue):
+        resultQueue.put(self.like(comparePNG))
+    '''
     PNGMap.similar
 
     Compares a PNGMap with an entire list of PNGMaps
@@ -235,7 +251,20 @@ class PNGMap:
     returns:    Float
     '''
     def similar(self, comparePNGs):
-        return sum(float(self.like(comparePNG)) for comparePNG in comparePNGs)
+        threads = []
+        likeQueue = Queue()
+        # Split comparisons into threads
+        for comparePNG in comparePNGs:
+            thread = Process(target=self.likeq, args=(comparePNG, likeQueue))
+            thread.start()
+            threads.append(thread)
+        # Sum up the comparisons
+        compares = []
+        while not len(compares) == len(comparePNGs):
+            compares.append(likeQueue.get())
+        for thread in threads:
+            thread.join()
+        return sum(float(like) for like in compares)
         
 '''
 randPair
@@ -324,7 +353,6 @@ def evolutionGen(userMutations, resourceBitmaps, recursionDepth, bestMap, resMap
     print('Currently at generation: %i' % recursionDepth)
     # Iterate list of PNGMaps and set the best as the current detected solution
     for userChild in userMutations:
-        finalRes = False
         for resourceBitmap in resourceBitmaps:
             if userChild.like(resourceBitmap) + resourceBitmap.like(userChild) > bestMap.like(resMap) + resMap.like(bestMap):
                 bestMap = copy.deepcopy(userChild)
