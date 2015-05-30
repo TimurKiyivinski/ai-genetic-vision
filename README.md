@@ -12,6 +12,7 @@ using a lookup table and genetic algorithms.
 
 Usage 
 =====
+```
 usage: scan_number.py [-h] -f FILE [-c COMPARE] [-m MUTATE] [-r RESOURCES]
                       [-s SAVE] [-v]
 
@@ -28,6 +29,7 @@ optional arguments:
                         Resource directory name
   -s SAVE, --save SAVE  Save solution image
   -v, --verbose         Verbose logging
+```
 
 License 
 =======
